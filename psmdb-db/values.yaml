@@ -64,7 +64,7 @@ tls:
   certValidityDuration: 2160h
   allowInvalidCertificates: false
   issuerConf:
-    name: special-selfsigned-issuer
+    name: mongo-ca-issuer
     kind: ClusterIssuer
     group: cert-manager.io
 secrets: {}
