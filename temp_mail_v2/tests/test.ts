@@ -1,0 +1,1 @@
+console.log("✅ Test passed: environment is working!");

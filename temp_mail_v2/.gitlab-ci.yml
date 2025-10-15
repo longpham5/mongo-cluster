@@ -1,0 +1,120 @@
+stages:
+  - install
+  - test
+  - docker
+
+variables:
+  NODE_ENV: development
+
+workflow:
+  rules:
+    - changes:
+        - README.md
+      when: never
+    - when: always
+
+.dev_and_tag_rules: &dev_and_tag_rules
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      when: always
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      when: always
+    - when: never
+
+install_dependencies:
+  stage: install
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+  script:
+    - npm ci --legacy-peer-deps
+  artifacts:
+    paths:
+      - node_modules/
+    expire_in: 1 hour
+  <<: *dev_and_tag_rules
+
+test:
+  stage: test
+  image: node:20-alpine
+  cache:
+    key: ${CI_COMMIT_REF_SLUG}
+    paths:
+      - node_modules/
+    policy: pull
+  dependencies:
+    - install_dependencies
+  script:
+    - npm run lint
+    - npm test
+  <<: *dev_and_tag_rules
+
+docker_build:
+  stage: docker
+  image: docker:20.10.16
+  services:
+    - docker:20.10.16-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$DOCKER_TAG .
+    - docker push $CI_REGISTRY_IMAGE:$DOCKER_TAG
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      variables:
+        DOCKER_TAG: "dev-$CI_COMMIT_SHORT_SHA"
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      variables:
+        DOCKER_TAG: "$CI_COMMIT_TAG"
+    - when: never
+
+update_helm_values:
+  stage: docker
+  image: alpine:3.18
+  needs:
+    - job: docker_build
+      artifacts: false
+  before_script:
+    - apk add --no-cache git yq openssh-client
+    - git config --global user.email "ci-bot@gitlab.com"
+    - git config --global user.name "CI Bot"
+    - mkdir -p ~/.ssh
+    - echo "$SSH_PRIVATE_KEY" | tr -d '\r' > ~/.ssh/id_rsa
+    - chmod 600 ~/.ssh/id_rsa
+    - ssh-keyscan gitlab.com >> ~/.ssh/known_hosts
+  script:
+    - git clone --depth=1 --branch $HELM_BRANCH git@gitlab.com:longpham5-group/helm-tempmail.git
+    - cd helm-tempmail/app/web
+    - |
+      CURRENT_TAG=$(yq '.image.tag' values.yaml)
+      echo "Current tag: $CURRENT_TAG"
+      echo "New tag: $DOCKER_TAG"
+      
+      if [ "$CURRENT_TAG" = "$DOCKER_TAG" ]; then
+        echo "Tag unchanged, skipping update"
+        exit 0
+      fi
+    - yq -i ".image.tag = \"$DOCKER_TAG\"" values.yaml
+    - git add values.yaml
+    - |
+      if git diff --staged --quiet; then
+        echo "No changes to commit"
+      else
+        git commit -m "Update web image tag to $DOCKER_TAG [ci skip]"
+        git push origin $HELM_BRANCH
+        echo "Successfully updated image tag to $DOCKER_TAG"
+      fi
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "dev"'
+      variables:
+        DOCKER_TAG: "dev-$CI_COMMIT_SHORT_SHA"
+        HELM_BRANCH: "dev"
+    - if: '$CI_COMMIT_TAG =~ /^v\d+\.\d+\.\d+$/'
+      variables:
+        DOCKER_TAG: "$CI_COMMIT_TAG"
+        HELM_BRANCH: "main"
+    - when: never

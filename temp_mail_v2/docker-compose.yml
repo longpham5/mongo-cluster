@@ -1,0 +1,11 @@
+version: "3.9"
+
+services:
+  app:
+    build: .
+    container_name: my-node-app
+    ports:
+      - "9169:9169"
+    environment:
+      - NODE_ENV=production
+    restart: unless-stopped

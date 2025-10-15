@@ -1,0 +1,214 @@
+---
+# Source: psmdb-db/templates/cluster-secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: mongodb-secrets
+  namespace: default
+  labels:
+    app.kubernetes.io/name: psmdb-db
+    helm.sh/chart: psmdb-db-1.20.1
+    app.kubernetes.io/instance: psmdb-db
+    app.kubernetes.io/version: "1.20.1"
+    app.kubernetes.io/managed-by: Helm
+type: Opaque
+stringData:
+  MONGODB_BACKUP_PASSWORD: backup123456
+  MONGODB_BACKUP_USER: backup
+  MONGODB_CLUSTER_ADMIN_PASSWORD: clusterAdmin123456
+  MONGODB_CLUSTER_ADMIN_USER: clusterAdmin
+  MONGODB_CLUSTER_MONITOR_PASSWORD: clusterMonitor123456
+  MONGODB_CLUSTER_MONITOR_USER: clusterMonitor
+  MONGODB_DATABASE_ADMIN_PASSWORD: databaseAdmin123456
+  MONGODB_DATABASE_ADMIN_USER: databaseAdmin
+  MONGODB_USER_ADMIN_PASSWORD: userAdmin123456
+  MONGODB_USER_ADMIN_USER: userAdmin
+  PMM_SERVER_API_KEY: apikey
+---
+# Source: psmdb-db/templates/connection-config.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-connection-config
+  namespace: default
+data:
+  MONGO_HOST: "mongodb-rs0.default.svc.cluster.local"
+  MONGO_PORT: "27017"
+  MONGO_DATABASE: "tempmail"
+  MONGO_TLS_CA_PATH: "/etc/ssl/certs/mongo-ca.crt"
+---
+# Source: psmdb-db/templates/cluster.yaml
+apiVersion: psmdb.percona.com/v1
+kind: PerconaServerMongoDB
+metadata:
+  name: mongodb
+  namespace: default
+  labels:
+    app.kubernetes.io/name: psmdb-db
+    helm.sh/chart: psmdb-db-1.20.1
+    app.kubernetes.io/instance: psmdb-db
+    app.kubernetes.io/version: "1.20.1"
+    app.kubernetes.io/managed-by: Helm
+  finalizers:
+    - percona.com/delete-psmdb-pods-in-order
+spec:
+  crVersion: 1.20.1
+  pause: false
+  unmanaged: false
+  enableVolumeExpansion: false
+  image: "percona/percona-server-mongodb:7.0.18-11"
+  imagePullPolicy: "Always"
+  unsafeFlags:
+    backupIfUnhealthy: false
+    mongosSize: false
+    replsetSize: true
+    terminationGracePeriod: false
+    tls: true
+  multiCluster:
+    enabled: false
+  tls:
+    allowInvalidCertificates: false
+    certValidityDuration: 2160h
+    issuerConf:
+      group: cert-manager.io
+      kind: ClusterIssuer
+      name: special-selfsigned-issuer
+    mode: preferTLS
+  secrets:
+    users: mongodb-secrets
+  updateStrategy: SmartUpdate
+  upgradeOptions:
+    versionServiceEndpoint: https://check.percona.com
+    apply: disabled
+    schedule: 0 2 * * *
+    setFCV: false
+  pmm:
+    enabled: false
+    image: "percona/pmm-client:2.44.1"
+    serverHost: monitoring-service
+
+  replsets:
+  - name: rs0
+    size: 1
+    affinity:
+      antiAffinityTopologyKey: kubernetes.io/hostname
+    livenessProbe:
+      failureThreshold: 4
+      initialDelaySeconds: 60
+      periodSeconds: 30
+      startupDelaySeconds: 7200
+      timeoutSeconds: 10
+    readinessProbe:
+      failureThreshold: 8
+      initialDelaySeconds: 30
+      periodSeconds: 10
+      successThreshold: 1
+      timeoutSeconds: 5
+    podDisruptionBudget:
+      maxUnavailable: 1
+    expose:
+      enabled: false
+      type: ClusterIP
+    resources:
+      limits:
+        cpu: 300m
+        memory: 0.5G
+      requests:
+        cpu: 300m
+        memory: 0.5G
+    volumeSpec:
+      persistentVolumeClaim:
+        accessModes:
+        - ReadWriteOnce
+        resources:
+          requests:
+            storage: 5Gi
+        storageClassName: standard
+    nonvoting:
+      enabled: false
+      size: 3
+      affinity:
+        antiAffinityTopologyKey: kubernetes.io/hostname
+      podDisruptionBudget:
+        maxUnavailable: 1
+      resources:
+        limits:
+          cpu: 300m
+          memory: 0.5G
+        requests:
+          cpu: 300m
+          memory: 0.5G
+      volumeSpec:
+        persistentVolumeClaim:
+          resources:
+            requests:
+              storage: 3Gi
+    arbiter:
+      enabled: false
+      size: 1
+      affinity:
+        antiAffinityTopologyKey: kubernetes.io/hostname
+
+  sharding:
+    enabled: false
+    balancer:
+      enabled: true
+
+    configsvrReplSet:
+      size: 3
+      affinity:
+        antiAffinityTopologyKey: kubernetes.io/hostname
+      podDisruptionBudget:
+        maxUnavailable: 1
+      expose:
+        enabled: false
+        type: ClusterIP
+      resources:
+        limits:
+          cpu: 300m
+          memory: 0.5G
+        requests:
+          cpu: 300m
+          memory: 0.5G
+      volumeSpec:
+        persistentVolumeClaim:
+          resources:
+            requests:
+              storage: 3Gi
+
+    mongos:
+      size: 3
+      affinity:
+        antiAffinityTopologyKey: kubernetes.io/hostname
+      podDisruptionBudget:
+        maxUnavailable: 1
+      resources:
+        limits:
+          cpu: 300m
+          memory: 0.5G
+        requests:
+          cpu: 300m
+          memory: 0.5G
+      expose:
+        type: ClusterIP
+  users:
+  - db: tempmail
+    name: tempmail-user
+    passwordSecretRef:
+      key: PASSWORD
+      name: tempmail-user-password
+    roles:
+    - db: tempmail
+      name: dbOwner
+
+  backup:
+    enabled: true
+    image: "percona/percona-backup-mongodb:2.9.1"
+    storages:
+      null
+    volumeMounts:
+      null
+    pitr:
+      enabled: false
+    tasks:
+      null
