@@ -132,7 +132,7 @@ volumeMounts:
     readOnly: true
   - name: shared-pem-storage
     mountPath: "/output-pem"
-  - name: tempmail-client-tls # for init container merge cert and key to pem file
+  - name: app-client-cert-source # for init container merge cert and key to pem file
     mountPath: "/input-certs"
 # - name: foo
 #   mountPath: "/etc/foo"
