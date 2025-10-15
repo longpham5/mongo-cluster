@@ -3,10 +3,6 @@ kind: Certificate
 metadata:
   name: tempmail-client-cert
   namespace: {{ .Release.Namespace }}
-  annotations:
-    "helm.sh/hook": pre-install, pre-upgrade
-    "helm.sh/hook-weight": "-5"
-    "helm.sh/hook-delete-policy": before-hook-creation
 spec:
   secretName: tempmail-client-tls
   issuerRef:
