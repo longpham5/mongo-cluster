@@ -126,7 +126,7 @@ volumes:
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts:
-  - name: mongodb-ssl-internal-volumee
+  - name: mongodb-ssl-internal-volume
     mountPath: "/etc/ssl/certs/ca.crt"
     subPath: ca.crt
     readOnly: true
