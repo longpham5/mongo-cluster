@@ -9,3 +9,4 @@ data:
   MONGO_DATABASE: "tempmail"
   MONGO_TLS_CA_PATH: "/etc/ssl/certs/mongo-ca.crt"
   MONGO_REPLICASET: "{{ .Values.replsets.rs0.name }}"
+  MONGO_TLS_CLIENT_CERT_PATH: "/output-pem/tls.pem"
