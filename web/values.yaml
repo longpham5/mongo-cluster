@@ -111,9 +111,9 @@ autoscaling:
 
 # Additional volumes on the output Deployment definition.
 volumes:
-  - name: mongo-ca-cert-volume
+  - name: mongodb-ssl-internal-volume
     secret:
-      secretName: mongodb-ca-cert
+      secretName: mongodb-ssl-internal
   - name: shared-pem-storage
     emptyDir: {}
   - name: app-client-cert-source
@@ -126,8 +126,9 @@ volumes:
 
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts:
-  - name: mongo-ca-cert-volume
-    mountPath: "/etc/ssl/certs/"
+  - name: mongodb-ssl-internal-volumee
+    mountPath: "/etc/ssl/certs/ca.crt"
+    subPath: ca.crt
     readOnly: true
   - name: shared-pem-storage
     mountPath: "/output-pem"
