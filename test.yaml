@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: mongosh-test
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongosh-test
+  template:
+    metadata:
+      labels:
+        app: mongosh-test
+    spec:
+      initContainers:
+        - name: create-pem-file
+          image: alpine:3.18
+          command:
+            - /bin/sh
+            - -c
+            - |
+              cat /input-certs/tls.crt /input-certs/tls.key > /output-pem/tls.pem
+          volumeMounts:
+            - name: mongodb-ca-volume
+              mountPath: /etc/ssl/certs/ca.crt
+              readOnly: true
+              subPath: ca.crt
+            - name: shared-pem-storage
+              mountPath: /output-pem
+            - name: app-client-cert-source
+              mountPath: /input-certs
+      containers:
+        - name: mongosh
+          image: mongo:7.0
+          command: ["sleep", "infinity"]
+          volumeMounts:
+            - name: mongodb-ca-volume
+              mountPath: /etc/ssl/certs/ca.crt
+              readOnly: true
+              subPath: ca.crt
+            - name: shared-pem-storage
+              mountPath: /output-pem
+            - name: app-client-cert-source
+              mountPath: /input-certs
+      volumes:
+        - name: mongodb-ca-volume
+          secret:
+            secretName: mongodb-ssl
+        - name: shared-pem-storage
+          emptyDir: {}
+        - name: app-client-cert-source
+          secret:
+            secretName: tempmail-client-tls
