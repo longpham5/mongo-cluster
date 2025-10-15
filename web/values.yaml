@@ -127,8 +127,7 @@ volumes:
 # Additional volumeMounts on the output Deployment definition.
 volumeMounts:
   - name: mongo-ca-cert-volume
-    mountPath: "/etc/ssl/certs/mongo-ca.crt"
-    subPath: ca.crt
+    mountPath: "/etc/ssl/certs/"
     readOnly: true
   - name: shared-pem-storage
     mountPath: "/output-pem"
