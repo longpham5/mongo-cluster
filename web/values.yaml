@@ -118,7 +118,7 @@ volumes:
     emptyDir: {}
   - name: app-client-cert-source
     secret:
-      secretName: tempmail-client-tls
+      secretName: mongodb-ssl-internal
 # - name: foo
 #   secret:
 #     secretName: mysecret
