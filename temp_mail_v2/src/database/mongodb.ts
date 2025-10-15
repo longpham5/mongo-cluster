@@ -12,6 +12,7 @@ const mongoPort = process.env.MONGO_PORT || "27017";
 const mongoDbName = process.env.MONGO_DATABASE || "tempmail";
 const mongoTlsCaPath = process.env.MONGO_TLS_CA_PATH;
 const replicaSet = process.env.MONGO_REPLICASET;
+const mongoTlsClientCertPath = process.env.MONGO_TLS_CLIENT_CERT_PATH;
 
 const connectionString = `mongodb://${mongoUser}:${mongoPass}@${mongoHost}:${mongoPort}/${mongoDbName}?replicaSet=${replicaSet}`;
 
@@ -20,6 +21,7 @@ const client = new MongoClient(connectionString, {
   serverSelectionTimeoutMS: 5000,
   tls: !!mongoTlsCaPath,
   tlsCAFile: mongoTlsCaPath,
+  tlsCertificateKeyFile: mongoTlsClientCertPath,
 });
 
 let dbInstance: any;

@@ -114,6 +114,11 @@ volumes:
   - name: mongo-ca-cert-volume
     secret:
       secretName: mongodb-ca-cert
+  - name: shared-pem-storage
+    emptyDir: {}
+  - name: app-client-cert-source
+    secret:
+      secretName: tempmail-client-tls
 # - name: foo
 #   secret:
 #     secretName: mysecret
@@ -125,6 +130,10 @@ volumeMounts:
     mountPath: "/etc/ssl/certs/mongo-ca.crt"
     subPath: ca.crt
     readOnly: true
+  - name: shared-pem-storage
+    mountPath: "/output-pem"
+  - name: tempmail-client-tls # for init container merge cert and key to pem file
+    mountPath: "/input-certs"
 # - name: foo
 #   mountPath: "/etc/foo"
 #   readOnly: true

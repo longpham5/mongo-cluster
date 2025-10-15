@@ -32,6 +32,14 @@ spec:
       securityContext:
         {{- toYaml . | nindent 8 }}
       {{- end }}
+      initContainers:
+      - name: create-pem-file
+        image: alpine:3.18 
+        command: ["/bin/sh", "-c", "cat /input-certs/tls.crt /input-certs/tls.key > /output-pem/tls.pem"]
+        {{- with .Values.volumeMounts }}
+        volumeMounts:
+          {{- toYaml . | nindent 12 }}
+        {{- end }}
       containers:
         - name: {{ .Chart.Name }}
           {{- with .Values.securityContext }}
