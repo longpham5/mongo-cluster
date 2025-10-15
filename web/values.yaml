@@ -113,12 +113,12 @@ autoscaling:
 volumes:
   - name: mongodb-ssl-internal-volume
     secret:
-      secretName: mongodb-ssl-internal
+      secretName: mongodb-ssl
   - name: shared-pem-storage
     emptyDir: {}
   - name: app-client-cert-source
     secret:
-      secretName: mongodb-ssl-internal
+      secretName: tempmail-client-tls
 # - name: foo
 #   secret:
 #     secretName: mysecret
