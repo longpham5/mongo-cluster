@@ -28,14 +28,23 @@ let dbInstance: any;
 
 async function initDB() {
   if (!dbInstance) {
-    await client.connect();
-    dbInstance = client.db(mongoDbName);
-    console.log("Successfully connected to MongoDB.");
+    try {
+      console.log("Connecting to MongoDB with options:", {
+        mongoUser, mongoPass, mongoHost, mongoPort, mongoDbName, replicaSet,
+        mongoTlsCaPath, mongoTlsClientCertPath
+      });
+      await client.connect();
+      dbInstance = client.db(mongoDbName);
+      console.log("Successfully connected to MongoDB.");
 
-    await dbInstance.collection("emails").createIndex({ "recipients.address": 1 });
-    await dbInstance.collection("emails").createIndex({ expiresAt: 1 });
-    await dbInstance.collection("inboxes").createIndex({ emailId: 1 });
-    await dbInstance.collection("inboxes").createIndex({ address: 1 });
+      await dbInstance.collection("emails").createIndex({ "recipients.address": 1 });
+      await dbInstance.collection("emails").createIndex({ expiresAt: 1 });
+      await dbInstance.collection("inboxes").createIndex({ emailId: 1 });
+      await dbInstance.collection("inboxes").createIndex({ address: 1 });
+      } catch (error) {
+        console.error("!!! FAILED TO CONNECT TO MONGODB:", error); 
+        throw error;
+      }
   }
   return dbInstance;
 }
